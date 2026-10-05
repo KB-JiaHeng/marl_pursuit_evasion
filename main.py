@@ -1,4 +1,3 @@
-from policy import evader_policy
 from policy.evader_policy import EvaderPolicy
 import hydra
 from omegaconf import DictConfig
@@ -41,6 +40,7 @@ def main(cfg: DictConfig) -> None:
         boundary_priority=cfg.evader_policy.boundary_priority,
         hunter_threat_radius=cfg.evader_policy.hunter_threat_radius,
         boundary_threshold=cfg.evader_policy.boundary_threshold,
+        boundary_margin=cfg.evader_policy.boundary_margin,
     )
 
     while env.agents:
@@ -52,6 +52,7 @@ def main(cfg: DictConfig) -> None:
         obs, rewards, terminations, truncations, infos = env.step(actions)
         
         print(obs['agent_0'])
+        print(f'reward = {rewards["agent_0"]}')
 
     env.close()
 

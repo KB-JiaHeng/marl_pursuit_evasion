@@ -23,7 +23,8 @@ env:
 evader_policy:
   distance_weight: 2.0
   velocity_weight: 1.0
-  hunter_priority: 10.0
-  boundary_priority: 1.0
-  hunter_threat_radius: 1.0
-  boundary_threshold: 0.85
+  hunter_priority: 5.0
+  boundary_priority: 2.0
+  hunter_threat_radius: 0.4
+  boundary_threshold: 0.9
+  boundary_margin: 0.1

@@ -6,25 +6,27 @@ from typing_extensions import override
 
 from .base import Action, Policy
 
-
+# The parameters of the boundary is referenced to: https://mpe2.farama.org/environments/simple_tag/
 class EvaderPolicy(Policy):
     def __init__(
         self,
         policy_mode: Literal["scripted", "learned"],
         distance_weight: float = 2.0,
         velocity_weight: float = 1.0,
-        hunter_priority: float = 10.0,
-        boundary_priority: float = 1.0,
-        hunter_threat_radius: float = 1.0,
-        boundary_threshold: float = 1.0,
+        hunter_priority: float = 5.0,
+        boundary_priority: float = 2.0,
+        hunter_threat_radius: float = 0.2,
+        boundary_threshold: float = 0.9,
+        boundary_margin: float = 0.1,
     ) -> None:
         self.policy_mode = policy_mode
-        self.distance_weight = distance_weight
-        self.velocity_weight = velocity_weight
+        self.distance_weight = distance_weight / (distance_weight + velocity_weight + 1e-6)
+        self.velocity_weight = velocity_weight / (distance_weight + velocity_weight + 1e-6)
         self.hunter_priority = hunter_priority
         self.boundary_priority = boundary_priority
         self.hunter_threat_radius = hunter_threat_radius
         self.boundary_threshold = boundary_threshold
+        self.boundary_margin = boundary_margin
         self.prev_pursuer_rel_positions: NDArray[np.float32] | None = None
 
     @override
@@ -43,6 +45,7 @@ class EvaderPolicy(Policy):
     def scripted_policy(self, obs: NDArray[np.float32]) -> Action:
         """Move away from pursuers while avoiding outward boundary actions."""
         # With 2 landmarks and 3 pursuers, the evader observation has 14 values.
+        # We will just hard-code the number here.
         _, self_position, _, pursuer_rel_flat = np.split(obs, [2, 4, 8])
         pursuer_rel_positions = pursuer_rel_flat.reshape(3, 2)
 
@@ -76,6 +79,7 @@ class EvaderPolicy(Policy):
                 axis=0,
             )
 
+            # Any hunters within the dangerous zone
             if self.prev_pursuer_rel_positions is not None:
                 relative_motion = (
                     pursuer_rel_positions - self.prev_pursuer_rel_positions
@@ -114,9 +118,11 @@ class EvaderPolicy(Policy):
         if boundary_distance > epsilon:
             boundary_direction = boundary_direction / boundary_distance
 
+
+        boundary_priority = np.maximum(boundary_distance / self.boundary_margin, 1.0) * self.boundary_priority
         escape_direction = (
             self.hunter_priority * hunter_escape_direction
-            + self.boundary_priority * boundary_direction
+            + boundary_priority * boundary_direction
         )
 
         self.prev_pursuer_rel_positions = pursuer_rel_positions.copy()
